@@ -11,7 +11,7 @@ on:
         description: 'Do you want to create a release?'
         required: true
         type: boolean
-        default: true
+        default: false
       ksun_branch:
         description: "Choose KernelSU Next Branch"
         required: true
@@ -21,7 +21,7 @@ on:
           - next
           - next-susfs
           - next-susfs-dev
-        default: stable
+        default: next-susfs
 
 jobs:
   #build-batch-1: # Non Bazel Builds
