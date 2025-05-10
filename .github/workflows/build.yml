@@ -102,6 +102,7 @@ jobs:
           git clone https://github.com/TheWildJames/AnyKernel3.git -b "$ANYKERNEL_BRANCH"
           git clone https://gitlab.com/simonpunk/susfs4ksu.git -b "$SUSFS_BRANCH"
           git clone https://github.com/TheWildJames/kernel_patches.git
+          git clone https://github.com/Bouteillepleine/kernel_patches.git
 
       - name: Initialize and Sync Kernel Source
         run: |
@@ -169,6 +170,10 @@ jobs:
           KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" $BASE_VERSION)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           sed -i "s/DKSU_VERSION=11998/DKSU_VERSION=${KSU_VERSION}/" Makefile
+
+          # Download and apply the patch
+          RUN wget https://raw.githubusercontent.com/Bouteillepleine/kernel_patches/main/bbr/bbrv3-20250425-5.15%2B.patch -O bbrv3-20250425-5.15+.patch
+          RUN patch -p1 < bbrv3-20250425-5.15+.patch
           
           # Change to common directory and apply SUSFS patch
           cd ../../common
@@ -237,6 +242,33 @@ jobs:
           echo "CONFIG_DEBUG_KERNEL=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_DYNAMIC_DEBUG=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_DEBUG_INFO=n" >> ./common/arch/arm64/configs/gki_defconfig
+
+      - name: Add BBR Configuration Settings
+        run: |
+          cd "$CONFIG/kernel_platform"
+          echo "CONFIG_TCP_CONG_ADVANCED=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_BBR=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_DEFAULT_TCP_CONG=\"bbr\"" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_CDG=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_DEFAULT_BBR=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_DEFAULT_CUBIC=n" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_DEFAULT_CDG=n" >> ./common/arch/arm64/configs/gki_defconfig          
+          echo "CONFIG_NET_SCH_DEFAULT=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_DEFAULT_FQ=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo 'CONFIG_DEFAULT_NET_SCH="fq"' >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_NET_SCH_HTB=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_NET_SCH_PRIO=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_NET_SCH_SFQ=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_NET_SCH_TBF=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_BIC=n" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_WESTWOOD=n" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_HTCP=y" >> ./common/arch/arm64/configs/gki_defconfig
+
+           # ── ECN config setting ──
+          echo "CONFIG_IP_NF_TARGET_ECN=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_IP_ECN=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_ECN=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_IPV6_ECN=y" >> ./common/arch/arm64/configs/gki_defconfig
 
       - name: Run sed and perl Commands
         run: |
