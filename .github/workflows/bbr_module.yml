@@ -40,6 +40,9 @@ jobs:
         cd linux
         make -j$(nproc)
 
+    - name: Debug Artifact Path
+      run: ls -l linux/net/ipv4/
+
     - name: Archive Kernel Module
       uses: actions/upload-artifact@v3.1.2
       with:
