@@ -133,7 +133,7 @@ jobs:
 
           # Apply the patch with correct strip level
           cd "$DEST_DIR"
-          patch -p2 < "$PATCH_FILE" || {
+          patch -p3 < "$PATCH_FILE" || {
           echo "Failed to apply BBRv3 patch"
           exit 1
           }
