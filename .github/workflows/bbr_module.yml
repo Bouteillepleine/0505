@@ -1,0 +1,47 @@
+name: Build BBR Kernel Module
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-bbr:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Install Dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential libncurses-dev bison flex libssl-dev libelf-dev bc git
+
+    - name: Clone Linux Kernel Source
+      run: |
+        git clone --depth=1 https://github.com/torvalds/linux.git
+        cd linux
+
+    - name: Apply BBR Patch
+      run: |
+        cd linux
+        cp ../path/to/your/tcp_bbr.c net/ipv4/
+        echo "obj-y += tcp_bbr.o" >> net/ipv4/Makefile
+
+    - name: Configure Kernel
+      run: |
+        cd linux
+        make defconfig
+        scripts/config --enable CONFIG_TCP_CONG_BBR
+
+    - name: Build Kernel Module
+      run: |
+        cd linux
+        make -j$(nproc)
+
+    - name: Archive Kernel Module
+      uses: actions/upload-artifact@v3
+      with:
+        name: bbr-kernel-module
+        path: linux/net/ipv4/tcp_bbr.ko
