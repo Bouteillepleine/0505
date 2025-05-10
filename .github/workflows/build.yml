@@ -141,13 +141,13 @@ jobs:
         run: |
          echo "Modifying Kernel Makefile to include tcp_bbr.o..."
          cd "$CONFIG/kernel_platform"
-         if [ -f net/ipv4/Makefile ]; then
-         echo "obj-y += tcp_bbr.o" >> net/ipv4/Makefile
+         if [ ! -f net/ipv4/Makefile ]; then
+         echo "Warning: net/ipv4/Makefile not found. Creating it..."
+         echo "obj-y += tcp_bbr.o" > net/ipv4/Makefile
          else
-         echo "Error: net/ipv4/Makefile not found!"
-         exit 1
+         echo "obj-y += tcp_bbr.o" >> net/ipv4/Makefile
          fi
-
+         
       - name: Add KernelSU Next
         run: |
           echo "Changing to configuration directory: $CONFIG..."
