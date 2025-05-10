@@ -41,7 +41,7 @@ jobs:
         make -j$(nproc)
 
     - name: Archive Kernel Module
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v3.1.2
       with:
         name: bbr-kernel-module
         path: linux/net/ipv4/tcp_bbr.ko
