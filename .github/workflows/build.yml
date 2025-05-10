@@ -120,10 +120,26 @@ jobs:
       - name: Apply BBRv3 Patch
         run: |
           echo "Applying BBRv3 patch..."
-          cd "$CONFIG/kernel_platform"
-          cp ../../../kernel_patches/bbr/bbrv3-20250425-5.15+.patch ./common/
-          cd ./common
-          patch -p1 < bbrv3-20250425-5.15+.patch
+
+          KERNEL_DIR="$CONFIG/kernel_platform"
+          PATCH_URL="https://raw.githubusercontent.com/Bouteillepleine/kernel_patches/main/bbr/bbrv3-20250425-5.15%2B.patch"
+          PATCH_FILE="bbrv3-20250425-5.15+.patch"
+          DEST_DIR="common"
+
+          cd "$KERNEL_DIR"
+
+          # Download the patch
+          curl -L "$PATCH_URL" -o "$DEST_DIR/$PATCH_FILE"
+
+          # Apply the patch
+          cd "$DEST_DIR"
+          patch -p1 < "$PATCH_FILE" || {
+          echo "Failed to apply BBRv3 patch"
+          exit 1
+          }
+
+          echo "BBRv3 patch applied successfully."
+
       
       - name: Add KernelSU Next
         run: |
