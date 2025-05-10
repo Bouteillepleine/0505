@@ -136,14 +136,14 @@ jobs:
           echo "BBRv3 patch applied successfully."
       
       - name: Download tcp_bbr.c
-        run: curl -L https://github.com/KozakaiAya/TCP_BBR/blob/master/code/v5.15/tcp_bbr.c
+        run: curl -L curl -L https://raw.githubusercontent.com/google/bbr/v3/net/ipv4/tcp_bbr.c
           -o net/ipv4/tcp_bbr.c
       - name: Modify Makefile to include tcp_bbr.o
         run: echo "obj-$(CONFIG_TCP_CONG_BBR) += tcp_bbr.o" >> net/ipv4/Makefile
       - name: Register tcp_bbr in tcp_cong.c
         run: echo "extern struct tcp_congestion_ops tcp_bbr;\ntcp_register_congestion_control(&tcp_bbr);"
           >> net/ipv4/tcp_cong.c
-
+          
       - name: Add KernelSU Next
         run: |
           echo "Changing to configuration directory: $CONFIG..."
