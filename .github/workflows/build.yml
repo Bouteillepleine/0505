@@ -131,16 +131,15 @@ jobs:
           # Download the patch
           curl -L "$PATCH_URL" -o "$DEST_DIR/$PATCH_FILE"
 
-          # Apply the patch
+          # Apply the patch with correct strip level
           cd "$DEST_DIR"
-          patch -p1 < "$PATCH_FILE" || {
+          patch -p2 < "$PATCH_FILE" || {
           echo "Failed to apply BBRv3 patch"
           exit 1
           }
 
           echo "BBRv3 patch applied successfully."
 
-      
       - name: Add KernelSU Next
         run: |
           echo "Changing to configuration directory: $CONFIG..."
