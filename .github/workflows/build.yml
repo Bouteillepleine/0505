@@ -134,6 +134,7 @@ jobs:
         run: |
          echo "Fetching BBRv3 tcp_bbr.c from Google repo..."
          cd "$CONFIG/kernel_platform"
+         mkdir -p net/ipv4
          curl -L https://raw.githubusercontent.com/google/bbr/v3/net/ipv4/tcp_bbr.c -o net/ipv4/tcp_bbr.c
 
       - name: Modify Kernel Makefile
