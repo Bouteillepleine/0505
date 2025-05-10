@@ -171,8 +171,8 @@ jobs:
           sed -i "s/DKSU_VERSION=11998/DKSU_VERSION=${KSU_VERSION}/" Makefile
 
           # Download and apply the patch
-          RUN wget https://raw.githubusercontent.com/Bouteillepleine/kernel_patches/main/bbr/bbrv3-20250425-5.15%2B.patch -O bbrv3-20250425-5.15+.patch
-          RUN patch -p1 < bbrv3-20250425-5.15+.patch
+          wget https://raw.githubusercontent.com/Bouteillepleine/kernel_patches/main/bbr/bbrv3-20250425-5.15%2B.patch -O bbrv3-20250425-5.15+.patch
+          patch -p1 < bbrv3-20250425-5.15+.patch
           
           # Change to common directory and apply SUSFS patch
           cd ../../common
