@@ -4,7 +4,7 @@ on:
     inputs:
       CPU:
         type: choice
-        description: "Options"
+        description: "SM"
         required: true
         default: sm8650
         options:
@@ -17,7 +17,7 @@ on:
           - sm8750
       FEIL:
         type: choice
-        description: "Model"
+        description: "Manifest"
         required: true
         default: oneplus_13r
         options:
@@ -41,10 +41,10 @@ on:
           - oneplus_pad2_v
           - oneplus_13
           - oneplus_ace5_pro
-          - GitHub bug
+          - GitHubbug
       CPUD:
         type: choice
-        description: "GKI Model"
+        description: "Code"
         required: true
         default: pineapple
         options:
@@ -55,7 +55,7 @@ on:
           - sun
       ANDROID_VERSION:
         type: choice
-        description: "Android"
+        description: "android"
         required: true
         default: android14
         options:
@@ -65,7 +65,7 @@ on:
           - android15
       KERNEL_VERSION:
        type: choice
-       description: "Version"
+       description: "version"
        required: true
        default: "6.1"
        options:
@@ -75,7 +75,7 @@ on:
          - "6.6"
       BUILD_METHOD:
         type: choice
-        description: "GKI/Perf"
+        description: "gki/perf"
         required: true
         default: gki
         options:
@@ -83,17 +83,17 @@ on:
           - perf
       KSUNEXT_ENABLED:
         description: "KSU Next"
-        required: false
+        required: true
         type: boolean
         default: true
       SUSFS_ENABLED:
         description: "SUSFS"
-        required: false
+        required: true
         type: boolean
         default: true
       SUSFS_CI:
-        description: "SUSFS CI"
-        required: false
+        description: "SUSFS CI？"
+        required: true
         type: boolean
         default: true
 jobs:
@@ -152,7 +152,6 @@ jobs:
           sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' common/scripts/setlocalversion
           git add -A
           git commit -m "Force remove -dirty suffix from kernel version"
-          
       - name: Set up KernelSU Next
         if: github.event.inputs.KSUNEXT_ENABLED == 'true'
         run: |
@@ -162,7 +161,6 @@ jobs:
           KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" 10200)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           sed -i "s/DKSU_VERSION=11998/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
-          
       - name: Set up susfs
         if: github.event.inputs.SUSFS_ENABLED == 'true'
         run: |
@@ -184,7 +182,6 @@ jobs:
           cp ../../kernel_patches/69_hide_stuff.patch ./
           patch -p1 -F 3 < 69_hide_stuff.patch
           patch -p1 -F 3 < syscall_hooks.patch
-          
       - name: Apply new hook and add configuration
         run: |
           cd kernel_workspace/kernel_platform
@@ -206,51 +203,32 @@ jobs:
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
-
           # Add additional tmpfs config setting
           echo "CONFIG_TMPFS_XATTR=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_TMPFS_POSIX_ACL=y" >> ./common/arch/arm64/configs/gki_defconfig
-
           # ── Additional Netfilter Options ──
           echo "CONFIG_WIREGUARD=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_IP_NF_NAT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_IP_NF_TARGET_TTL=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_IP6_NF_TARGET_HL=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_IP6_NF_MATCH_HL=y" >> ./common/arch/arm64/configs/gki_defconfig      
-          
-           # ── Strip debug to reduce size ──
+          echo "CONFIG_IP6_NF_MATCH_HL=y" >> ./common/arch/arm64/configs/gki_defconfig
+          # ── Strip debug to reduce size ──
           echo "CONFIG_DEBUG_KERNEL=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_DYNAMIC_DEBUG=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_DEBUG_INFO=n" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_RCU_TRACE=n" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_CONTEXT_SWITCH_TRACER=n" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_NETFILTER_XT_TARGET_TRACE=n" >> ./common/arch/arm64/configs/gki_defconfig
-          
-      - name: Run sed and perl Commands
-        run: |
-          echo "Changing to configuration directory: $CONFIG..."
-          cd "$CONFIG/kernel_platform"
-          
-          echo "Running sed commands..."
-          
-          sed -i 's/CONFIG_LTO=n/CONFIG_LTO=y/' "./common/arch/arm64/configs/gki_defconfig"
-          sed -i 's/CONFIG_LTO_CLANG_FULL=y/CONFIG_LTO_CLANG_THIN=y/' "./common/arch/arm64/configs/gki_defconfig"
-          sed -i 's/CONFIG_LTO_CLANG_NONE=y/CONFIG_LTO_CLANG_THIN=y/' "./common/arch/arm64/configs/gki_defconfig"
-          sed -i '/echo "LTO $LTO "/i export LTO=thin' ./oplus/build/oplus_setup.sh
-          sed -i 's/export REPACK_IMG=true/export REPACK_IMG=false/g' ./oplus/build/oplus_setup.sh
-                    
+          sed -i '2s/check_defconfig//' ./common/build.config.gki
       - name: Build kernel
         if: ${{ github.event.inputs.CPU == 'sm8650' || github.event.inputs.CPU == 'sm7675' }}
         run: |
           cd kernel_workspace
-          ./kernel_platform/build_with_bazel.py -t ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
-          
+          LTO=thin ./kernel_platform/build_with_bazel.py -t ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+        env:
+          LTO: thin
       - name: Fallback build kernel
         if: ${{ github.event.inputs.CPU != 'sm8650' && github.event.inputs.CPU != 'sm7675' }}
         run: |
-         cd kernel_workspace
-         LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
-     
+          cd kernel_workspace
+          LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
       - name: Make AnyKernel3
         run: |
           git clone https://github.com/Numbersf/AnyKernel3 --depth=1
@@ -260,7 +238,7 @@ jobs:
           dir3="./kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}/dist/"
           target1="./AnyKernel3/"
           target2="./kernel_workspace/kernel"
-          #  Image 
+          # 查找 Image 文件
           if find "$dir1" -name "Image" | grep -q "Image"; then
             image_path="$dir1"Image
           elif find "$dir2" -name "Image" | grep -q "Image"; then
@@ -270,31 +248,31 @@ jobs:
           else
             image_path=$(find "./kernel_workspace/kernel_platform/common/out/" -name "Image" | head -n 1)
           fi
-          # Image
+          # 拷贝 Image
           if [ -n "$image_path" ] && [ -f "$image_path" ]; then
             mkdir -p "$dir1"
             if [ "$(realpath "$image_path")" != "$(realpath "$dir1"Image)" ]; then
               cp "$image_path" "$dir1"
             else
-              echo "Image"
+              echo "source file is the same"
             fi
             cp "$dir1"Image ./AnyKernel3/Image
           else
-            echo "Image"
+            echo "Image not found"
             exit 1
           fi
-          # 
+          # Copy other new files
           if [ "${{ github.event.inputs.CPU }}" = "sm8750" ]; then
           for file in dtbo.img system_dlkm.erofs.img vendor_dlkm.img vendor_boot.img; do
             if [ -f "$dir1$file" ]; then
               target_name="$file"
-              # system_dlkm.erofs.img
+              # system_dlkm.erofs.img 
               if [ "$file" = "system_dlkm.erofs.img" ]; then
                 target_name="system_dlkm.img"
               fi
               cp "$dir1$file" "./AnyKernel3/$target_name"
             else
-              echo "$file dlkm"
+              echo "$file doesn't exit!"
             fi
           done
           fi
@@ -312,7 +290,7 @@ jobs:
             "https://api.github.com/repos/sidex15/susfs4ksu-module/actions/runs/$LATEST_RUN_ID/artifacts" | jq -r '.artifacts[0].archive_download_url')
           curl -L -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -o ksu_module_susfs.zip "$ARTIFACT_URL"
           cp ksu_module_susfs.zip ./AnyKernel3/
-      # SUSFS (Release）
+      # SUSFS Release
       - name: Download Latest SUSFS Module from Release
         if: ${{ github.event.inputs.SUSFS_CI == 'false' }}
         run: |
@@ -322,8 +300,8 @@ jobs:
         id: feil_clean
         run: |
           clean_feil="${{ github.event.inputs.FEIL }}"
-          clean_feil="${clean_feil%_v}"  
-          clean_feil="${clean_feil%_u}"  
+          clean_feil="${clean_feil%_v}"  # Remove _v）
+          clean_feil="${clean_feil%_u}"  # Remove _u）
           echo "value=$clean_feil" >> $GITHUB_OUTPUT
       - name: Upload AnyKernel3
         uses: actions/upload-artifact@v4
