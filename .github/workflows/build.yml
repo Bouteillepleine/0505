@@ -244,36 +244,34 @@ jobs:
 
       - name: Squash Merge BBR v3 into Kernel Source        
         run: |
-          cd "$GITHUB_WORKSPACE/${{ env.CONFIG }}/kernel_platform"
+          export KERNEL_SOURCE_DIR="$GITHUB_WORKSPACE/${{ env.CONFIG }}/kernel_platform"
+          cd "$KERNEL_SOURCE_DIR"
+          # Set Git identity locally (required for commit)
+          git config user.email "q543069760@gmail.com"
+          git config user.name "Build"
+          # Create a new branch for the integration
           git checkout -b bbr-v3-integration
+          # Add and fetch BBR v3 from Google's repo
           git remote add google-bbr https://github.com/google/bbr.git
           git fetch google-bbr v3
+          # Verify the branch exists
           git show-ref --verify --quiet refs/remotes/google-bbr/v3 || { echo "Error: google-bbr/v3 branch not found"; exit 1; }
+          # Perform squash merge (no history, just changes)
           git merge google-bbr/v3 --squash --allow-unrelated-histories
-
-      - name: Show BBR v3 Squash Merge Diff
-        run: |
-          cd "$GITHUB_WORKSPACE/${{ env.CONFIG }}/kernel_platform"
-          echo "Showing changes introduced by BBR v3 squash merge:"
+          # Show the full diff in the logs and save it
+          echo "=== BBR v3 Squash Merge Diff Summary ==="
           git diff --stat
-          git diff
-
-      - name: Commit BBR v3 Squash Merge
-        run: |
-          cd "$GITHUB_WORKSPACE/${{ env.CONFIG }}/kernel_platform"
+          echo "=== Full Diff ==="
+          git diff > ../../bbr-v3-diff.patch
+          cat ../../bbr-v3-diff.patch
+          # Commit the changes locally
           git commit -m "Integrate BBR v3 from google-bbr/v3" --signoff
-
-      - name: Save BBR v3 Diff to File
-        run: |
-          cd "$GITHUB_WORKSPACE/${{ env.CONFIG }}/kernel_platform"
-          git diff > ../../bbr-v3-diff.patch || echo "No diff to save"
 
       - name: Upload BBR v3 Diff
         uses: actions/upload-artifact@v4
         with:
           name: bbr-v3-diff
           path: bbr-v3-diff.patch
-         # ./scripts/checkpatch.pl --file common/net/ipv4/tcp_bbr.c --strict || { echo "checkpatch.pl found issues"; exit 1; }
         
       - name: Add BBR Configuration Settings
         run: |
