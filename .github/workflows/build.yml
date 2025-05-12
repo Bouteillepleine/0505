@@ -258,12 +258,6 @@ jobs:
           git show-ref --verify --quiet refs/remotes/google-bbr/v3 || { echo "Error: google-bbr/v3 branch not found"; exit 1; }
           # Perform squash merge (no history, just changes)
           git merge google-bbr/v3 --squash --allow-unrelated-histories
-          # Show the full diff in the logs and save it
-          echo "=== BBR v3 Squash Merge Diff Summary ==="
-          git diff --stat
-          echo "=== Full Diff ==="
-          git diff > ../../bbr-v3-diff.patch
-          cat ../../bbr-v3-diff.patch
           # Commit the changes locally
           git commit -m "Integrate BBR v3 from google-bbr/v3" --signoff
 
