@@ -221,7 +221,9 @@ jobs:
           echo "CONFIG_DEBUG_KERNEL=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_DYNAMIC_DEBUG=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_DEBUG_INFO=n" >> ./common/arch/arm64/configs/gki_defconfig
-          sed -i '2s/check_defconfig//' ./common/build.config.gki
+          # Set LTO=thin for build
+          echo "LTO=thin" >> ./common/build.config.gki
+          sed -i '2s/check_defconfig//' ./common/build.config.gki          
       - name: Merge BBR into Kernel Source
         if: github.event.inputs.BBR == 'true'
         run: |
