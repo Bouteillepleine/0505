@@ -254,7 +254,7 @@ jobs:
           git merge google-bbr/v3 --squash --allow-unrelated-histories --no-commit
           # Remove unwanted files/dirs (customize as needed)
           rm -rf Documentation tools testing README.md LICENSE .github
-          find . -type \( -name "*.md" -o -name "*.txt" -o -name "*.rst" \) -delete
+          find . -type f \( -name "*.md" -o -name "*.txt" -o -name "*.rst" \) -delete
           # Commit the changes
           git commit -m "Integrate BBRv3 code (no docs)" --signoff
           # Merge back into main branch
