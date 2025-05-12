@@ -259,13 +259,7 @@ jobs:
           # Perform squash merge (no history, just changes)
           git merge google-bbr/v3 --squash --allow-unrelated-histories
           # Commit the changes locally
-          git commit -m "Integrate BBR v3 from google-bbr/v3" --signoff
-
-      - name: Upload BBR v3 Diff
-        uses: actions/upload-artifact@v4
-        with:
-          name: bbr-v3-diff
-          path: bbr-v3-diff.patch
+          git commit -m "Integrate BBR v3 from google-bbr/v3" --signoff      
         
       - name: Add BBR Configuration Settings
         run: |
