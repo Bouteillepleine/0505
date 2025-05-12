@@ -238,7 +238,7 @@ jobs:
           echo "CONFIG_DYNAMIC_DEBUG=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_DEBUG_INFO=n" >> ./common/arch/arm64/configs/gki_defconfig
 
-      - name: Squash Merge BBR v3 into Kernel Source
+      - name: Squash Merge BBR v3 into Kernel Source        
         run: |
           cd ${{ env.KERNEL_SOURCE_DIR }}
           git config --global user.email "q543069760@gmail.com"
@@ -249,16 +249,16 @@ jobs:
           git show-ref --verify --quiet refs/remotes/google-bbr/v3 || { echo "Error: google-bbr/v3 branch not found"; exit 1; }
           git merge google-bbr/v3 --squash --allow-unrelated-histories
           git commit -m "Integrate BBR v3 from google-bbr/v3" --signoff
-          git push origin bbr-v3-integration
+          git push origin bbr-v3-integration --force
 
-      - name: Fetch checkpatch.pl
+      - name: Fetch checkpatch.pl        
         run: |
           cd ${{ env.KERNEL_SOURCE_DIR }}
           mkdir -p scripts
           curl -LSs "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/plain/scripts/checkpatch.pl?h=linux-6.1.y" -o scripts/checkpatch.pl
           chmod +x scripts/checkpatch.pl
 
-      - name: Run checkpatch.pl on BBR v3 Changes
+      - name: Run checkpatch.pl on BBR v3 Changes        
         run: |
           cd ${{ env.KERNEL_SOURCE_DIR }}
           ./scripts/checkpatch.pl --file common/net/ipv4/tcp_bbr.c
