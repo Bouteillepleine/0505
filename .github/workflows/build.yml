@@ -131,17 +131,13 @@ jobs:
           git show-ref --verify --quiet refs/remotes/google-bbr/v3 || { echo "Error: google-bbr/v3 branch not found"; exit 1; }
           # Merge the entire v3 branch
           git merge google-bbr/v3 --strategy-option=patience --allow-unrelated-histories -m "Merge BBRv3 initial"
-          # Discard changes to unwanted directories
-          git checkout HEAD -- Documentation/ drivers/ tools/ arch/ fs/ mm/ kernel/ block/ sound/ crypto/
-          # Stage all remaining changes
+          # Reset all changes except BBRv3 core files
+          # Keep only net/ipv4/tcp_bbr.c, related headers, and config files
+          git checkout HEAD -- $(git diff --name-only --staged --diff-filter=AM | grep -vE '^(net/ipv4/tcp_bbr\.c|include/net/tcp\.h|net/ipv4/Kconfig|net/Kconfig|net/ipv4/Makefile)')
+          # Stage the remaining changes
           git add .
           # Commit the filtered changes
-          git commit -m "Merge BBRv3, excluding Documentation, drivers, tools, arch, fs, mm, kernel, block, sound, and crypto" || echo "No changes to commit"
-          
-      - name: Push changes
-        run: |
-          cd "$CONFIG/kernel_platform"
-          git push origin bbrv3-integration --force
+          git commit -m "Integrate BBRv3 core files only (tcp_bbr.c, tcp.h, Kconfig, Makefile)" || echo "No changes to commit"
                   
       - name: Add KernelSU Next
         run: |
