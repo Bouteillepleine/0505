@@ -133,21 +133,11 @@ jobs:
           git merge google-bbr/v3 --strategy-option=patience --allow-unrelated-histories -m "Merge BBRv3 initial"
           # Discard changes to unwanted directories
           git checkout HEAD -- Documentation/ drivers/ tools/ arch/ fs/ mm/ kernel/ block/ sound/ crypto/
-          # Discard changes to include/linux/ except tcp.h
-          git checkout HEAD -- include/linux/ ':include/linux/tcp.h'
-          # Stage only BBRv3-related networking files
-          git add net/ipv4/tcp_bbr.c net/ipv4/tcp_cong.c net/core/cong.c include/net/tcp.h include/linux/tcp.h 2>/dev/null || true
-          # Check for additional networking files modified by the merge
-          EXTRA_FILES=$(git diff --name-only --diff-filter=M net/ipv4/ net/core/ | grep -E '\.c$|\.h$')
-          if [ -n "$EXTRA_FILES" ]; then
-            echo "Adding extra networking files: $EXTRA_FILES"
-            git add $EXTRA_FILES
-          fi
           # Commit the filtered changes
           git commit -m "Merge BBRv3, excluding Documentation, drivers, tools, and other non-networking files" || echo "No changes to commit"
           # Verify the changes
           git diff --name-only HEAD^ HEAD
-
+          
       - name: Push changes
         run: |
           cd "$CONFIG/kernel_platform"
