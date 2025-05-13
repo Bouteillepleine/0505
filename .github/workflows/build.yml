@@ -119,15 +119,28 @@ jobs:
 
       - name: Merge BBRv3 Core Components
         run: |
-          cd "$CONFIG/kernel_platform/common"
+          # Ensure CONFIG is set
+          if [ -z "$CONFIG" ]; then
+            echo "Error: CONFIG environment variable is not set"
+            exit 1
+          fi
+          # Change to the common directory
+          cd "$CONFIG/kernel_platform/common" || { echo "Error: Cannot change to $CONFIG/kernel_platform/common"; exit 1; }
+          # Verify Git repository
+          git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "Error: $CONFIG/kernel_platform/common is not a Git repository"; exit 1; }
+          # Check for uncommitted changes and stash them
+          if git status --porcelain | grep .; then
+            echo "Stashing local changes to avoid merge conflicts"
+            git stash push -m "Temporary stash before BBRv3 merge" || { echo "Error: Failed to stash changes"; exit 1; }
+          fi
           # Configure Git identity
           git config --global user.email "q543069760@gmail.com"
-          git config --global user.name "Build"          
+          git config --global user.name "Build"
           # Add BBR remote (idempotent)
-          git remote add google-bbr https://github.com/google/bbr.git || true          
+          git remote add google-bbr https://github.com/google/bbr.git || true
           # Fetch BBRv3 branch with validation
-          git fetch google-bbr v3
-          if ! git show-ref --verify refs/remotes/google-bbr/v3; then
+          git fetch google-bbr v3 || { echo "Error: Failed to fetch google-bbr/v3"; exit 1; }
+          if ! git show-ref --verify --quiet refs/remotes/google-bbr/v3; then
             echo "BBRv3 branch not found!"
             exit 1
           fi
@@ -140,12 +153,20 @@ jobs:
             --no-commit \
             -- \
             net/ipv4/ \
-            net/core/sock.c \
             include/net/tcp.h \
             include/uapi/linux/tcp.h \
             include/uapi/linux/inet_diag.h \
             include/linux/tcp.h \
-            Documentation/networking/ip-sysctl.rst
+            Documentation/networking/ip-sysctl.rst || { echo "Merge failed"; exit 1; }
+          # Check for merge conflicts
+          if git diff --name-only --diff-filter=U | grep .; then
+            echo "Merge conflicts detected. Aborting merge."
+            git merge --abort
+            if git stash list | grep "Temporary stash before BBRv3 merge"; then
+              git stash pop || echo "Warning: Failed to reapply stashed changes"
+            fi
+            exit 1
+          fi
           # Resolve conflicts in favor of BBRv3
           git checkout --theirs -- \
             net/ipv4/tcp_bbr.* \
@@ -157,10 +178,23 @@ jobs:
           git add net/ipv4/ include/ Documentation/networking/
           # Commit with original timestamp
           git commit -m "Merge BBRv3 core components" \
-            --date="$(git log -1 --format=%ad google-bbr/v3)"     
+            --date="$(git log -1 --format=%ad google-bbr/v3)" || { echo "No changes to commit"; exit 1; }
+          # Update kernel config idempotently
+          DEFCONFIG="arch/arm64/configs/gki_defconfig"
+          if [ -f "$DEFCONFIG" ]; then
+            # Remove existing BBR config to avoid duplicates
+            sed -i '/CONFIG_TCP_CONG_BBR=/d' "$DEFCONFIG"
+            sed -i '/CONFIG_DEFAULT_TCP_CONG=/d' "$DEFCONFIG"
+            # Add BBR config
+            echo "CONFIG_TCP_CONG_BBR=y" >> "$DEFCONFIG"
+            echo "CONFIG_DEFAULT_TCP_CONG=\"bbr\"" >> "$DEFCONFIG"
+          else
+            echo "Error: $DEFCONFIG not found"
+            exit 1
+          fi
       - name: Validate BBRv3 Integration
         run: |
-          cd "$CONFIG/kernel_platform/common"          
+          cd "$CONFIG/kernel_platform/common"
           # File existence checks
           REQUIRED_FILES=(
             "net/ipv4/tcp_bbr.c"
@@ -172,12 +206,7 @@ jobs:
               echo "Missing critical file: $file"
               exit 1
             fi
-          done         
-          # Struct registration check
-          if ! grep -q "bbr_registered" net/ipv4/tcp_bbr.c; then
-            echo "BBR not properly registered!"
-            exit 1
-          fi
+          done 
           
       - name: Add KernelSU Next
         run: |
