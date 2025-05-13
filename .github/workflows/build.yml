@@ -240,45 +240,36 @@ jobs:
 
       - name: Merge BBRv3 with Clean Integration
         run: |
-          cd "$CONFIG/kernel_platform" 
+          cd "$CONFIG/kernel_platform"
           # Configure git (if not already set)
           git config --global user.email "q543069760@gmail.com"
           git config --global user.name "Build"
-          # Add remote and fetch v3 branch
-          git remote add google-bbr https://github.com/google/bbr.git || true
-          git fetch google-bbr v3
-          # Verify branch exists
-          git show-ref --verify --quiet refs/remotes/google-bbr/v3 || { echo "Error: BBRv3 branch missing"; exit 1; }
-          # Merge without committing         
-          git merge --no-commit google-bbr/v3 --strategy-option=patience --allow-unrelated-histories || { echo "Error: Merge failed"; exit 1; }
-          # Unstage all changes from the merge
-          git restore --staged --worktree :/ || { echo "Error: Failed to clean staging and working directory"; exit 1; }
-          # Stage only essential BBRv3 files
+          # Clone BBRv3 repo separately
+          git clone --depth=1 --branch v3 https://github.com/google/bbr.git ../bbr-v3
+          # Copy only essential BBRv3 files into your kernel tree
+          cp -v ../bbr-v3/net/ipv4/tcp_bbr.c net/ipv4/
+          cp -v ../bbr-v3/include/net/tcp.h include/net/
+          cp -v ../bbr-v3/include/linux/tcp.h include/linux/
+          cp -v ../bbr-v3/include/uapi/linux/tcp.h include/uapi/linux/
+          cp -v ../bbr-v3/net/ipv4/Kconfig net/ipv4/
+          cp -v ../bbr-v3/net/Kconfig net/
+          cp -v ../bbr-v3/net/ipv4/Makefile net/ipv4/
+          cp -v ../bbr-v3/net/ipv4/sysctl_net_ipv4.c net/ipv4/
+          cp -v ../bbr-v3/net/ipv4/tcp_output.c net/ipv4/
+          cp -v ../bbr-v3/net/ipv4/tcp_input.c net/ipv4/
+          # Stage and commit the changes
           git add -f \
-          net/ipv4/tcp_bbr.c \
-          include/net/tcp.h \
-          include/linux/tcp.h \
-          include/uapi/linux/tcp.h \
-          net/ipv4/Kconfig \
-          net/Kconfig \
-          net/ipv4/Makefile \
-          net/ipv4/sysctl_net_ipv4.c \
-          net/ipv4/tcp_output.c \
-          net/ipv4/tcp_input.c || { echo "Error: Failed to stage BBRv3 files"; exit 1; }
-          # Discard all other changes in the working directory
-          git checkout -- \
-          :^net/ipv4/tcp_bbr.c \
-          :^include/net/tcp.h \
-          :^include/linux/tcp.h \
-          :^include/uapi/linux/tcp.h \
-          :^net/ipv4/Kconfig \
-          :^net/Kconfig \
-          :^net/ipv4/Makefile \
-          :^net/ipv4/sysctl_net_ipv4.c \
-          :^net/ipv4/tcp_output.c \
-          :^net/ipv4/tcp_input.c || { echo "Error: Failed to discard non-BBRv3 changes"; exit 1; }
-          # Final commit
-          git commit -m "BBRv3: Minimal production-ready integration" || echo "No changes to commit"
+            net/ipv4/tcp_bbr.c \
+            include/net/tcp.h \
+            include/linux/tcp.h \
+            include/uapi/linux/tcp.h \
+            net/ipv4/Kconfig \
+            net/Kconfig \
+            net/ipv4/Makefile \
+            net/ipv4/sysctl_net_ipv4.c \
+            net/ipv4/tcp_output.c \
+            net/ipv4/tcp_input.c
+          git commit -m "BBRv3: Minimal production-ready integration" || echo "No changes"
           
       - name: Add BBR Configuration Settings
         run: |
