@@ -137,11 +137,7 @@ jobs:
           git add .
           # Commit the filtered changes
           git commit -m "Merge BBRv3, excluding Documentation, drivers, tools, arch, fs, mm, kernel, block, sound, and crypto" || echo "No changes to commit"
-          # Verify the changes
-          git diff --name-only HEAD^ HEAD
-          # Log the commit for debugging
-          git log --oneline -n 1 --name-only
-
+          
       - name: Push changes
         run: |
           cd "$CONFIG/kernel_platform"
