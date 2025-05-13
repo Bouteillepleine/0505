@@ -116,6 +116,14 @@ jobs:
           # Sync repo and apply patches
           $REPO --version
           $REPO --trace sync -c --no-clone-bundle --no-tags --optimized-fetch -j$(nproc --all) --fail-fast
+
+      - name: BBR        
+        run: |
+          cd kernel_workspace/kernel_platform          
+          git remote add google-bbr https://github.com/google/bbr.git
+          git fetch google-bbr v3
+          git show-ref --verify --quiet refs/remotes/google-bbr/v3 || { echo "Error: google-bbr/v3 branch not found"; exit 1; }
+          git merge google-bbr/v3 --strategy-option=patience --allow-unrelated-histories -m "Merge BBR"
                   
       - name: Add KernelSU Next
         run: |
@@ -236,19 +244,7 @@ jobs:
            # ── Strip debug to reduce size ──
           echo "CONFIG_DEBUG_KERNEL=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_DYNAMIC_DEBUG=n" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_DEBUG_INFO=n" >> ./common/arch/arm64/configs/gki_defconfig
-
-      - name: Set Kernel Source Directory
-        run: |
-          echo "KERNEL_SOURCE_DIR=$GITHUB_WORKSPACE/${{ env.CONFIG }}/kernel_platform" >> $GITHUB_ENV
-
-      - name: Merge BBR into Kernel Source
-        run: |
-          cd kernel_workspace/kernel_platform          
-          git remote add google-bbr https://github.com/google/bbr.git
-          git fetch google-bbr v3
-          git show-ref --verify --quiet refs/remotes/google-bbr/v3 || { echo "Error: google-bbr/v3 branch not found"; exit 1; }
-          git merge google-bbr/v3 --strategy-option=patience --allow-unrelated-histories -m "Merge BBR v3 into kernel"     
+          echo "CONFIG_DEBUG_INFO=n" >> ./common/arch/arm64/configs/gki_defconfig      
         
       - name: Add BBR Configuration Settings
         run: |
