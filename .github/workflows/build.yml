@@ -117,15 +117,41 @@ jobs:
           $REPO --version
           $REPO --trace sync -c --no-clone-bundle --no-tags --optimized-fetch -j$(nproc --all) --fail-fast
 
-      - name: BBR
+      - name: Merge BBRv3 with exclusions
         run: |
           cd "$CONFIG/kernel_platform"
           git config --global user.email "q543069760@gmail.com"
           git config --global user.name "Build"
+          # Create a new branch for BBRv3 integration
+          git checkout -b bbrv3-integration
+          # Add and fetch the google-bbr repository
           git remote add google-bbr https://github.com/google/bbr.git
           git fetch google-bbr v3
-          git show-ref --verify --quiet refs/remotes/google-bbr/v3 || { echo "Error: google-bbr/v3 branch not found"; exit 1; }                 
-          git merge google-bbr/v3 --strategy-option=patience --allow-unrelated-histories -m "Merge BBR"
+          # Verify the branch exists
+          git show-ref --verify --quiet refs/remotes/google-bbr/v3 || { echo "Error: google-bbr/v3 branch not found"; exit 1; }
+          # Merge branch
+          git merge google-bbr/v3 --strategy-option=patience --allow-unrelated-histories -m "Merge BBRv3 initial"
+          # Discard changes to unwanted directories
+          git checkout HEAD -- Documentation/ drivers/ tools/ arch/ fs/ mm/ kernel/ block/ sound/ crypto/
+          # Discard changes to include/linux/ except tcp.h
+          git checkout HEAD -- include/linux/ ':include/linux/tcp.h'
+          # Stage only BBRv3-related networking files
+          git add net/ipv4/tcp_bbr.c net/ipv4/tcp_cong.c net/core/cong.c include/net/tcp.h include/linux/tcp.h 2>/dev/null || true
+          # Check for additional networking files modified by the merge
+          EXTRA_FILES=$(git diff --name-only --diff-filter=M net/ipv4/ net/core/ | grep -E '\.c$|\.h$')
+          if [ -n "$EXTRA_FILES" ]; then
+            echo "Adding extra networking files: $EXTRA_FILES"
+            git add $EXTRA_FILES
+          fi
+          # Commit the filtered changes
+          git commit -m "Merge BBRv3, excluding Documentation, drivers, tools, and other non-networking files" || echo "No changes to commit"
+          # Verify the changes
+          git diff --name-only HEAD^ HEAD
+
+      - name: Push changes
+        run: |
+          cd "$CONFIG/kernel_platform"
+          git push origin bbrv3-integration --force
                   
       - name: Add KernelSU Next
         run: |
