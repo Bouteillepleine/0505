@@ -144,41 +144,56 @@ jobs:
             echo "BBRv3 branch not found!"
             exit 1
           fi
-          # Merge only critical BBR paths
+          # Merge BBRv3 branch with no commit
           git merge google-bbr/v3 \
             --strategy=recursive \
             --strategy-option=patience \
-            --strategy-option=theirs \
             --allow-unrelated-histories \
-            --no-commit \
-            -- \
-            net/ipv4/ \
+            --no-commit || { echo "Merge failed"; git merge --abort; if git stash list | grep "Temporary stash before BBRv3 merge"; then git stash pop; fi; exit 1; }
+          # Check for merge conflicts
+          if git diff --name-only --diff-filter=U | grep .; then
+            echo "Merge conflicts detected. Resolving in favor of BBRv3 for critical files."
+            # Resolve conflicts for BBRv3 files
+            git checkout --theirs -- \
+              net/ipv4/tcp_bbr.c \
+              net/ipv4/Kconfig \
+              net/ipv4/Makefile \
+              net/ipv4/sysctl_net_ipv4.c \
+              include/net/tcp.h \
+              include/uapi/linux/tcp.h \
+              include/uapi/linux/inet_diag.h \
+              include/linux/tcp.h \
+              Documentation/networking/ip-sysctl.rst
+            # Accept resolved conflicts
+            git add -- \
+              net/ipv4/tcp_bbr.c \
+              net/ipv4/Kconfig \
+              net/ipv4/Makefile \
+              net/ipv4/sysctl_net_ipv4.c \
+              include/net/tcp.h \
+              include/uapi/linux/tcp.h \
+              include/uapi/linux/inet_diag.h \
+              include/linux/tcp.h \
+              Documentation/networking/ip-sysctl.rst
+            # Discard remaining conflicts
+            git diff --name-only --diff-filter=U | xargs git rm 2>/dev/null || true
+          fi
+          # Discard changes to non-BBRv3 files
+          git checkout HEAD -- $(git diff --name-only --diff-filter=AM | grep -vE '^(net/ipv4/tcp_bbr\.c|net/ipv4/Kconfig|net/ipv4/Makefile|net/ipv4/sysctl_net_ipv4\.c|include/net/tcp\.h|include/uapi/linux/tcp\.h|include/uapi/linux/inet_diag\.h|include/linux/tcp\.h|Documentation/networking/ip-sysctl\.rst)')
+          # Stage BBRv3 changes
+          git add -- \
+            net/ipv4/tcp_bbr.c \
+            net/ipv4/Kconfig \
+            net/ipv4/Makefile \
+            net/ipv4/sysctl_net_ipv4.c \
             include/net/tcp.h \
             include/uapi/linux/tcp.h \
             include/uapi/linux/inet_diag.h \
             include/linux/tcp.h \
-            Documentation/networking/ip-sysctl.rst || { echo "Merge failed"; exit 1; }
-          # Check for merge conflicts
-          if git diff --name-only --diff-filter=U | grep .; then
-            echo "Merge conflicts detected. Aborting merge."
-            git merge --abort
-            if git stash list | grep "Temporary stash before BBRv3 merge"; then
-              git stash pop || echo "Warning: Failed to reapply stashed changes"
-            fi
-            exit 1
-          fi
-          # Resolve conflicts in favor of BBRv3
-          git checkout --theirs -- \
-            net/ipv4/tcp_bbr.* \
-            net/ipv4/Kconfig \
-            net/ipv4/Makefile \
-            net/ipv4/sysctl_net_ipv4.c \
-            include/uapi/linux/tcp.h
-          # Stage changes
-          git add net/ipv4/ include/ Documentation/networking/
+            Documentation/networking/ip-sysctl.rst
           # Commit with original timestamp
           git commit -m "Merge BBRv3 core components" \
-            --date="$(git log -1 --format=%ad google-bbr/v3)" || { echo "No changes to commit"; exit 1; }
+            --date="$(git log -1 --format=%ad google-bbr/v3)" || { echo "No changes to commit"; if git stash list | grep "Temporary stash before BBRv3 merge"; then git stash pop; fi; exit 1; }
           # Update kernel config idempotently
           DEFCONFIG="arch/arm64/configs/gki_defconfig"
           if [ -f "$DEFCONFIG" ]; then
@@ -190,8 +205,12 @@ jobs:
             echo "CONFIG_DEFAULT_TCP_CONG=\"bbr\"" >> "$DEFCONFIG"
           else
             echo "Error: $DEFCONFIG not found"
+            if git stash list | grep "Temporary stash before BBRv3 merge"; then
+              git stash pop
+            fi
             exit 1
           fi
+
       - name: Validate BBRv3 Integration
         run: |
           cd "$CONFIG/kernel_platform/common"
@@ -200,13 +219,22 @@ jobs:
             "net/ipv4/tcp_bbr.c"
             "include/uapi/linux/tcp.h"
             "net/ipv4/sysctl_net_ipv4.c"
+            "include/net/tcp.h"
+            "include/uapi/linux/inet_diag.h"
+            "include/linux/tcp.h"
+            "Documentation/networking/ip-sysctl.rst"
           )
           for file in "${REQUIRED_FILES[@]}"; do
             if [ ! -f "$file" ]; then
               echo "Missing critical file: $file"
               exit 1
             fi
-          done 
+          done
+          # Struct registration check
+          if ! grep -q "bbr_registered" net/ipv4/tcp_bbr.c; then
+            echo "BBR not properly registered!"
+            exit 1
+          fi
           
       - name: Add KernelSU Next
         run: |
