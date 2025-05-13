@@ -247,14 +247,14 @@ jobs:
           # Add remote and fetch v3 branch
           git remote add google-bbr https://github.com/google/bbr.git || true
           git fetch google-bbr v3
-          # Verify branch exists
+          # Verify branch existence
           git show-ref --verify --quiet refs/remotes/google-bbr/v3 || { echo "Error: BBRv3 branch missing"; exit 1; }
-          # Merge without committing
+          # Merge with no auto-commit
           git merge --no-commit google-bbr/v3 --strategy-option=patience --allow-unrelated-histories
-          # Reset merge commit but keep changes
+          # Reset to pre-merge state
           git reset --soft HEAD^
-          git restore --staged --worktree :/  # Clean both staging and working directory
-          # Stage only essential BBRv3 files
+          git restore --staged --worktree :/
+          # Stage core BBR files
           git add -f \
           net/ipv4/tcp_bbr.c \
           include/net/tcp.h \
@@ -266,7 +266,7 @@ jobs:
           net/ipv4/sysctl_net_ipv4.c \
           net/ipv4/tcp_output.c \
           net/ipv4/tcp_input.c
-          # Explicitly remove all other merged files
+          # Remove unwanted files
           git restore --staged --worktree \
           :^net/ipv4/tcp_bbr.c \
           :^include/net/tcp.h \
@@ -277,8 +277,12 @@ jobs:
           :^net/ipv4/Makefile \
           :^net/ipv4/sysctl_net_ipv4.c \
           :^net/ipv4/tcp_output.c \
-          :^net/ipv4/tcp_input.c
-          # Final commit
+          :^net/ipv4/tcp_input.c \
+          Documentation/ \
+          tools/testing/ \
+          samples/ \
+          net/ipv4/tcp_*.c
+          # Commit changes
           git commit -m "BBRv3: Minimal production-ready integration" || echo "No changes"
         
       - name: Add BBR Configuration Settings
