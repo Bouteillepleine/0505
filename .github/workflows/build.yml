@@ -251,8 +251,8 @@ jobs:
           git show-ref --verify --quiet refs/remotes/google-bbr/v3 || { echo "Error: BBRv3 branch missing"; exit 1; }
           # Merge without committing
           git merge --no-commit google-bbr/v3 --strategy-option=patience --allow-unrelated-histories
-          # Clean both staging and working directory
-          git restore --staged --worktree :/
+          # Unstage all changes but keep in working directory
+          git reset
           # Stage only essential BBRv3 files
           git add -f \
           net/ipv4/tcp_bbr.c \
@@ -265,21 +265,11 @@ jobs:
           net/ipv4/sysctl_net_ipv4.c \
           net/ipv4/tcp_output.c \
           net/ipv4/tcp_input.c
-          # Explicitly remove all other merged files
-          git restore --staged --worktree \
-          :^net/ipv4/tcp_bbr.c \
-          :^include/net/tcp.h \
-          :^include/linux/tcp.h \
-          :^include/uapi/linux/tcp.h \
-          :^net/ipv4/Kconfig \
-          :^net/Kconfig \
-          :^net/ipv4/Makefile \
-          :^net/ipv4/sysctl_net_ipv4.c \
-          :^net/ipv4/tcp_output.c \
-           :^net/ipv4/tcp_input.c
+          # Discard all other changes in the working directory
+          git checkout -- .
           # Final commit
           git commit -m "BBRv3: Minimal production-ready integration" || echo "No changes"
-        
+          
       - name: Add BBR Configuration Settings
         run: |
           cd "$CONFIG/kernel_platform"
