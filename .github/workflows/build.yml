@@ -122,8 +122,6 @@ jobs:
           cd "$CONFIG/kernel_platform"
           git config --global user.email "q543069760@gmail.com"
           git config --global user.name "Build"
-          # Create a new branch for BBRv3 integration
-          git checkout -b bbrv3-integration
           # Add and fetch the google-bbr repository
           git remote add google-bbr https://github.com/google/bbr.git
           git fetch google-bbr v3
