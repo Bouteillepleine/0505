@@ -117,16 +117,6 @@ jobs:
           $REPO --version
           $REPO --trace sync -c --no-clone-bundle --no-tags --optimized-fetch -j$(nproc --all) --fail-fast
 
-      - name: Apply BBR Patch
-        run: |
-          echo "Applying BBRv3 patch..."
-          cd "$CONFIG/kernel_platform/common"
-          curl -L "https://github.com/Bouteillepleine/kernel_patches/raw/main/bbr/bbrv3-20250425-5.15%2B.patch" -o bbrv3.patch
-          git apply --check bbrv3.patch || { echo "Error: Patch conflict detected! Check bbrv3.patch.rej"; exit 1; }
-          git apply bbrv3.patch
-          git add .
-          git commit -m "Apply BBRv3 header changes"
-
       - name: Replace tcp_bbr.c with BBRv3 Implementation
         run: |
           echo "Replacing tcp_bbr.c with BBRv3 implementation..."
