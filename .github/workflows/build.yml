@@ -117,6 +117,11 @@ jobs:
           $REPO --version
           $REPO --trace sync -c --no-clone-bundle --no-tags --optimized-fetch -j$(nproc --all) --fail-fast
 
+      - name: Set up Git user
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
       - name: Replace tcp_bbr.c with BBRv3 Implementation
         run: |
           echo "Replacing tcp_bbr.c with BBRv3 implementation..."
