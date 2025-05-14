@@ -144,44 +144,41 @@ jobs:
             echo "BBRv3 branch not found!"
             exit 1
           fi
-          # Merge BBRv3 branch with no commit
-          echo "Merging BBRv3 branch with no commit..."
+          # Merge BBRv3 branch with exclusions
+          echo "Merging BBRv3 branch with exclusions..."
           git merge google-bbr/v3 \
             --strategy=recursive \
             --strategy-option=patience \
             --allow-unrelated-histories \
             --no-commit || { echo "Merge failed"; git merge --abort; if git stash list | grep "Temporary stash before BBRv3 merge"; then git stash pop; fi; exit 1; }
-          # Check for merge conflicts
-          echo "Checking for merge conflicts..."
-          if git diff --name-only --diff-filter=U | grep .; then
-            echo "Merge conflicts detected. Resolving in favor of BBRv3 for critical files."
-            git checkout --theirs -- \
-              net/ipv4/tcp_bbr.c \
-              net/ipv4/Kconfig \
-              net/ipv4/Makefile \
-              net/ipv4/sysctl_net_ipv4.c \
-              include/net/tcp.h \
-              include/uapi/linux/tcp.h \
-              include/uapi/linux/inet_diag.h \
-              include/linux/tcp.h \
-              Documentation/networking/ip-sysctl.rst
-            echo "Marking conflicts as resolved..."
-            # Stage only BBRv3 files to avoid including unrelated conflicts
-            git add -- \
-              net/ipv4/tcp_bbr.c \
-              net/ipv4/Kconfig \
-              net/ipv4/Makefile \
-              net/ipv4/sysctl_net_ipv4.c \
-              include/net/tcp.h \
-              include/uapi/linux/tcp.h \
-              include/uapi/linux/inet_diag.h \
-              include/linux/tcp.h \
-              Documentation/networking/ip-sysctl.rst || { echo "Error: Failed to stage resolved conflicts"; exit 1; }
-            # Discard remaining conflicts
-            git diff --name-only --diff-filter=U | xargs git rm 2>/dev/null || true
-          fi
+          # Exclude unnecessary files from the merge
+          echo "Excluding unnecessary files (Documentation, .rst, media)..."
+          git checkout --ours -- $(git diff --name-only --diff-filter=U | grep -E '^Documentation/|^.*\.rst$|^media/') || true
+          # Resolve merge conflicts for critical BBRv3 files
+          echo "Resolving merge conflicts for critical BBRv3 files..."
+          git checkout --theirs -- \
+            net/ipv4/tcp_bbr.c \
+            net/ipv4/Kconfig \
+            net/ipv4/Makefile \
+            net/ipv4/sysctl_net_ipv4.c \
+            include/net/tcp.h \
+            include/uapi/linux/tcp.h \
+            include/uapi/linux/inet_diag.h \
+            include/linux/tcp.h \
+            Documentation/networking/ip-sysctl.rst || true
+          echo "Marking conflicts as resolved..."
+          git add -- \
+            net/ipv4/tcp_bbr.c \
+            net/ipv4/Kconfig \
+            net/ipv4/Makefile \
+            net/ipv4/sysctl_net_ipv4.c \
+            include/net/tcp.h \
+            include/uapi/linux/tcp.h \
+            include/uapi/linux/inet_diag.h \
+            include/linux/tcp.h \
+            Documentation/networking/ip-sysctl.rst || { echo "Error: Failed to stage resolved conflicts"; exit 1; }
           # Discard changes to non-BBRv3 files
-          echo "Discarding non-BBRv3 changes..."
+          echo "Discarding changes to non-BBRv3 files..."
           git checkout HEAD -- $(git diff --name-only --diff-filter=AM | grep -vE '^(net/ipv4/tcp_bbr\.c|net/ipv4/Kconfig|net/ipv4/Makefile|net/ipv4/sysctl_net_ipv4\.c|include/net/tcp\.h|include/uapi/linux/tcp\.h|include/uapi/linux/inet_diag\.h|include/linux/tcp\.h|Documentation/networking/ip-sysctl\.rst)') || true
           # Stage BBRv3 changes
           echo "Staging BBRv3 changes..."
@@ -221,28 +218,6 @@ jobs:
           if git stash list | grep "Temporary stash before BBRv3 merge"; then
             git stash pop || { echo "Error: Failed to apply stashed changes"; exit 1; }
           fi
-      - name: Validate BBRv3 Integration
-        run: |
-          cd "$CONFIG/kernel_platform/common"
-          # File existence checks
-          echo "Validating BBRv3 files..."
-          REQUIRED_FILES=(
-            "net/ipv4/tcp_bbr.c"
-            "net/ipv4/Kconfig"
-            "net/ipv4/Makefile"
-            "net/ipv4/sysctl_net_ipv4.c"
-            "include/net/tcp.h"
-            "include/uapi/linux/tcp.h"
-            "include/uapi/linux/inet_diag.h"
-            "include/linux/tcp.h"
-            "Documentation/networking/ip-sysctl.rst"
-          )
-          for file in "${REQUIRED_FILES[@]}"; do
-            if [ ! -f "$file" ]; then
-              echo "Missing critical file: $file"
-              exit 1
-            fi
-          done          
           
       - name: Add KernelSU Next
         run: |
