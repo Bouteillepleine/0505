@@ -116,6 +116,33 @@ jobs:
           # Sync repo and apply patches
           $REPO --version
           $REPO --trace sync -c --no-clone-bundle --no-tags --optimized-fetch -j$(nproc --all) --fail-fast
+
+      - name: Apply BBR Patch
+        run: |
+          echo "Applying BBRv3 patch..."
+          cd "$CONFIG/kernel_platform/common"
+          curl -L "https://github.com/Bouteillepleine/kernel_patches/raw/main/bbr/bbrv3-20250425-5.15%2B.patch" -o bbrv3.patch
+          git apply --check bbrv3.patch || { echo "Error: Patch conflict detected! Check bbrv3.patch.rej"; exit 1; }
+          git apply bbrv3.patch
+          git add .
+          git commit -m "Apply BBRv3 header changes"
+
+      - name: Replace tcp_bbr.c with BBRv3 Implementation
+        run: |
+          echo "Replacing tcp_bbr.c with BBRv3 implementation..."
+          cd "$CONFIG/kernel_platform/common"
+          curl -L "https://github.com/Bouteillepleine/kernel_patches/raw/main/bbr/tcp_bbra.c" -o tcp_bbra.c
+          cp tcp_bbra.c net/ipv4/tcp_bbr.c
+          git add net/ipv4/tcp_bbr.c
+          git commit -m "Replace tcp_bbr.c with BBRv3 implementation"
+
+      - name: Verify BBRv3 Integration
+        run: |
+          echo "Verifying BBRv3 integration..."
+          cd "$CONFIG/kernel_platform/common"
+          grep -q "BBR_VERSION.*3" net/ipv4/tcp_bbr.c || { echo "Error: BBRv3 version not found!"; exit 1; }
+          grep -q "bbr_register" net/ipv4/tcp_bbr.c || { echo "Error: BBR registration missing!"; exit 1; }
+          grep -q "ICSK_CA_PRIV_SIZE.*144" include/net/inet_connection_sock.h || { echo "Error: ICSK_CA_PRIV_SIZE incorrect!"; exit 1; }
      
       - name: Add KernelSU Next
         run: |
