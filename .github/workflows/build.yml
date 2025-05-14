@@ -123,7 +123,7 @@ jobs:
           if [ -z "$CONFIG" ]; then
             echo "Error: CONFIG environment variable is not set"
             exit 1
-          fi
+          fi    
           # Change to the common directory
           cd "$CONFIG/kernel_platform/common" || { echo "Error: Cannot change to $CONFIG/kernel_platform/common"; exit 1; }
           # Verify Git repository
@@ -152,8 +152,8 @@ jobs:
             --allow-unrelated-histories \
             --no-commit || { echo "Merge failed"; git merge --abort; if git stash list | grep "Temporary stash before BBRv3 merge"; then git stash pop; fi; exit 1; }
           # Exclude unnecessary files from the merge
-          echo "Excluding unnecessary files (Documentation, .rst, media)..."
-          git checkout --ours -- $(git diff --name-only --diff-filter=U | grep -E '^Documentation/|^.*\.rst$|^media/') || true
+          echo "Excluding unnecessary files (Documentation, sound drivers, .rst files)..."
+          git checkout --ours -- $(git diff --name-only --diff-filter=U | grep -E '^Documentation/|^sound/|^.*\.rst$') || true
           # Resolve merge conflicts for critical BBRv3 files
           echo "Resolving merge conflicts for critical BBRv3 files..."
           git checkout --theirs -- \
@@ -164,8 +164,7 @@ jobs:
             include/net/tcp.h \
             include/uapi/linux/tcp.h \
             include/uapi/linux/inet_diag.h \
-            include/linux/tcp.h \
-            Documentation/networking/ip-sysctl.rst || true
+            include/linux/tcp.h || true    
           echo "Marking conflicts as resolved..."
           git add -- \
             net/ipv4/tcp_bbr.c \
@@ -175,11 +174,10 @@ jobs:
             include/net/tcp.h \
             include/uapi/linux/tcp.h \
             include/uapi/linux/inet_diag.h \
-            include/linux/tcp.h \
-            Documentation/networking/ip-sysctl.rst || { echo "Error: Failed to stage resolved conflicts"; exit 1; }
+            include/linux/tcp.h || { echo "Error: Failed to stage resolved conflicts"; exit 1; }    
           # Discard changes to non-BBRv3 files
           echo "Discarding changes to non-BBRv3 files..."
-          git checkout HEAD -- $(git diff --name-only --diff-filter=AM | grep -vE '^(net/ipv4/tcp_bbr\.c|net/ipv4/Kconfig|net/ipv4/Makefile|net/ipv4/sysctl_net_ipv4\.c|include/net/tcp\.h|include/uapi/linux/tcp\.h|include/uapi/linux/inet_diag\.h|include/linux/tcp\.h|Documentation/networking/ip-sysctl\.rst)') || true
+          git checkout HEAD -- $(git diff --name-only --diff-filter=AM | grep -vE '^(net/ipv4/tcp_bbr\.c|net/ipv4/Kconfig|net/ipv4/Makefile|net/ipv4/sysctl_net_ipv4\.c|include/net/tcp\.h|include/uapi/linux/tcp\.h|include/uapi/linux/inet_diag\.h|include/linux/tcp\.h)') || true
           # Stage BBRv3 changes
           echo "Staging BBRv3 changes..."
           git add -- \
@@ -190,33 +188,15 @@ jobs:
             include/net/tcp.h \
             include/uapi/linux/tcp.h \
             include/uapi/linux/inet_diag.h \
-            include/linux/tcp.h \
-            Documentation/networking/ip-sysctl.rst || { echo "Error: Failed to stage BBRv3 files"; exit 1; }
+            include/linux/tcp.h || { echo "Error: Failed to stage BBRv3 files"; exit 1; }    
           # Commit the merge
           echo "Finalizing the merge..."
           git commit -m "Merged BBRv3 into kernel with conflict resolution" \
             --date="$(git log -1 --format=%ad google-bbr/v3)" || { echo "Error: Failed to commit the merge"; if git stash list | grep "Temporary stash before BBRv3 merge"; then git stash pop; fi; exit 1; }
-          # Update kernel config idempotently
-          echo "Updating kernel config..."
-          DEFCONFIG="arch/arm64/configs/gki_defconfig"
-          if [ -f "$DEFCONFIG" ]; then
-            # Remove existing BBR config to avoid duplicates
-            sed -i '/CONFIG_TCP_CONG_BBR=/d' "$DEFCONFIG"
-            sed -i '/CONFIG_DEFAULT_TCP_CONG=/d' "$DEFCONFIG"
-            # Add BBR config
-            echo "CONFIG_TCP_CONG_BBR=y" >> "$DEFCONFIG"
-            echo "CONFIG_DEFAULT_TCP_CONG=\"bbr\"" >> "$DEFCONFIG"
-          else
-            echo "Error: $DEFCONFIG not found"
-            if git stash list | grep "Temporary stash before BBRv3 merge"; then
-              git stash pop
-            fi
-            exit 1
-          fi
-          # Restore stashed changes
+           # Restore stashed changes
           echo "Restoring stashed changes (if any)..."
           if git stash list | grep "Temporary stash before BBRv3 merge"; then
-            git stash pop || { echo "Error: Failed to apply stashed changes"; exit 1; }
+          git stash pop || { echo "Error: Failed to apply stashed changes"; exit 1; }
           fi
           
       - name: Add KernelSU Next
