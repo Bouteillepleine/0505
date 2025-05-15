@@ -350,7 +350,287 @@ jobs:
             # cp ./out/dist/vendor_dlkm.img ../AnyKernel3/
             # cp ./out/dist/vendor_boot.img ../AnyKernel3/
           fi
+     
+      - name: Integrate Magisk Module
+  run: |
+    echo "Creating Magisk module structure in AnyKernel3..."
+    cd ./AnyKernel3
+    
+    # Create module directory
+    MODULE_DIR="modules/kernel_enable"
+    mkdir -p "$MODULE_DIR"
+    
+    # Create module.prop
+    cat > "$MODULE_DIR/module.prop" << 'EOF' || exit 1
+id=kernel_enable
+name=Kernel_optimization
+version=1.2
+versionCode=12
+author=xx
+description=✅ Enables kernel optimization
+EOF
+    
+    # Create post-fs-data.sh
+    cat > "$MODULE_DIR/post-fs-data.sh" << 'EOF' || exit 1
+#!/system/bin/sh
 
+# Improve Mem TCP
+sysctl -w net.ipv4.tcp_rmem='524288 1048576 2097152'
+sysctl -w net.ipv4.tcp_wmem='524288 1048576 2097152'
+sysctl -w net.ipv6.tcp_rmem='524288 1048576 2097152'
+sysctl -w net.ipv6.tcp_wmem='524288 1048576 2097152'
+
+# Reduce TCP latency
+sysctl -w net.ipv4.tcp_slow_start_after_idle=0
+sysctl -w net.ipv4.tcp_no_metrics_save=1
+sysctl -w net.ipv4.tcp_mtu_probing=1
+
+resetprop ro.boot.vbmeta.invalidate_on_error yes
+EOF
+    
+    # Create persist.prop
+    cat > "$MODULE_DIR/persist.prop" << 'EOF' || exit 1
+# persist debug
+persist.sys.assert.state=false
+persist.sys.alwayson.enable=false
+persist.sys.debug.layer_trace.enable=false
+persist.sys.oplus.perfrecord=false
+persist.sys.oplus_trace=0
+persist.sys.oplus.theia_screen_monitor.disabled=1
+persist.sys.oplus.ostats.labmode.enable=0
+persist.sys.oplus.cvt.manager=0
+persist.sys.ostatsd.enable=0
+persist.sys.ostats_tpd.enable=0
+persist.sys.ostats_pullerd.enable=0
+persist.sys.ood.enable=0
+persist.sys.midasd.enable=0
+persist.vendor.ims.disableDebugLogs=1
+persist.vendor.ims.disableIMSLogs=1
+persist.vendor.ims.disableQXDMLogs=1
+EOF
+    
+    # Create qcom.prop
+    cat > "$MODULE_DIR/qcom.prop" << 'EOF' || exit 1
+# Disable CoreSight
+persist.debug.coresight.config=
+
+# QCOM Use oryon as processor target for ART and Bionic
+dalvik.vm.isa.arm64.features=runtime
+dalvik.vm.isa.arm64.variant=oryon
+ro.bionic.cpu_variant=oryon
+
+# Log
+persist.logd.diag.tcpdump=false
+persist.sys.qseelogd=false
+persist.sys.ssr.enable_debug=false
+vendor.bluetooth.startbtlogger=false
+
+# QCOM DDR power saving
+vendor.chre.enabled=true
+vendor.pasr.enabled=true  # Uncommented as recommended
+EOF
+    
+    # Create oplus.prop (corrected formatting)
+    cat > "$MODULE_DIR/oplus.prop" << 'EOF' || exit 1
+## Oneplus Shit trimming
+## From:
+## DoC:
+
+# Debug and Logs
+debug.sf.oplus_display_trace.enable=false
+debug.vendor.perf.smart_touch.trace=false
+persist.sys.oplus.need_log=false
+persist.sys.ostats_pullerd.enable=false
+persist.sys.ostats_tpd.enable=false
+persist.sys.ostatsd.enable=false
+persist.sys.ssr.enable_debug=false
+persist.vendor.corectl.debug.config=false
+persist.vendor.sys.rawdump_copy=false
+persist.vendor.tracing.hsuart.enabled=false
+ro.oplus.minidump.kernel.log.support=false
+ro.oplus.wifi.minidump.enable.state=false
+
+# Scheduler, freq controllers
+persist.sys.janktracker.enable=false
+persist.sys.obrain_obfuscate.enable=false
+persist.sys.ocenter.enable=false
+persist.sys.oiface.enable=false
+persist.sys.oplus.opt.ui_thread=false
+ro.oplus.camera.defercap.support=false
+
+# Thermal
+oplus.dex.tempcontrol=false
+persist.sys.oplus.wifi.sla.game_high_temperature=100
+ro.oplus.audio.thermal_control=false
+
+# Memory management
+persist.sys.osense.dump=true
+ro.oplus.osense.uaf_enable=false
+persist.oplus.ocompiler=0
+persist.oplus.zygote_ocomp=0
+# persist.sys.atomic.enable=0
+persist.sys.lmk.oplus.kill_memleak_process=0
+persist.sys.oplus.lmkd_super_critical_threshold_8g=1
+persist.sys.oplus.lmkd_super_critical_threshold_12g=1
+persist.sys.oplus.lmkd_super_critical_threshold_16g=1
+persist.sys.oplus.lmkd_super_critical_threshold_24g=1
+persist.sys.oplus.lmkd_super_critical_threshold_rus_8g=1
+persist.sys.oplus.lmkd_super_critical_threshold_rus_12g=1
+persist.sys.oplus.lmkd_super_critical_threshold_rus_16g=1
+persist.sys.oplus.lmkd_super_critical_threshold_rus_24g=1
+persist.vendor.enable.preload=false
+sys.lmk.oplus.force_use_old_strategy=0
+sys.oplus.lmk.anon.opt=0
+sys.oplus.lmk.change_limit=0
+sys.oplus.lmk_killed_memleak_pid=0
+sys.oplus.vm.oplus_compact_memory=0
+sys.priority.optimize.enable=0
+ro.lmk.enable_watermark_check=0
+ro.lmk.filecache_min_kb=4
+ro.lmk.nstrat_psi_complete_ms=850
+ro.lmk.nstrat_psi_partial_ms=250
+ro.lmk.nstrat_wmark_boost_factor=15000
+ro.lmk.psi_scrit_complete_stall_ms=999
+ro.lmk.super_critical=0
+ro.lmk.use_new_strategy_dup=1
+ro.lmk.use_minfree_levels_dup=0
+
+# Misc shits
+persist.sys.hardcoder.name=
+persist.sys.oem_smooth=false
+persist.sys.oplus.cvt.manager=false
+persist.sys.oppo.junkmonitor=false
+persist.sys.tasktracker.enable=false
+sys.oplus.cvt.enable=false
+
+# ART Optimizations
+vendor.oplus.dalvik.vm.heapgrowthlimit=512m
+vendor.oplus.dalvik.vm.heapmaxfree=32m
+vendor.oplus.dalvik.vm.heapminfree=512k
+vendor.oplus.dalvik.vm.heapsize=512m
+vendor.oplus.dalvik.vm.heapstartsize=2m
+vendor.oplus.dalvik.vm.heaptargetutilization=0.8
+EOF
+    
+    # Create system.prop (corrected formatting)
+    cat > "$MODULE_DIR/system.prop" << 'EOF' || exit 1
+# BBR
+net.ipv4.tcp_congestion_control=bbr
+net.core.default_qdisc=fq
+
+# dex2oat Optimizations
+dalvik.vm.background-dex2oat-cpu-set=0,1,2,3,4,5,6,7
+dalvik.vm.background-dex2oat-threads=8
+dalvik.vm.boot-dex2oat-cpu-set=0,1,2,3,4,5,6,7
+dalvik.vm.boot-dex2oat-threads=8
+dalvik.vm.dex2oat-cpu-set=0,1,2,3,4,5,6,7
+dalvik.vm.dex2oat-swap=true
+dalvik.vm.dex2oat-threads=8
+dalvik.vm.image-dex2oat-cpu-set=0,1,2,3,4,5,6,7
+dalvik.vm.image-dex2oat-threads=8
+dalvik.vm.restore-dex2oat-cpu-set=0,1,2,3,4,5,6,7
+dalvik.vm.restore-dex2oat-threads=8
+dalvik.vm.madvise.artfile.size=2147483647
+dalvik.vm.madvise.odexfile.size=2147483647
+dalvik.vm.madvise.vdexfile.size=2147483647
+dalvik.vm.systemservercompilerfilter=everything
+dalvik.vm.systemuicompilerfilter=everything
+
+# dex2oat Trigger
+pm.dexopt.ab-ota=verify
+pm.dexopt.bg-dexopt=everything
+pm.dexopt.boot-after-ota=verify
+pm.dexopt.boot-after-mainline-update=verify
+pm.dexopt.cmdline=everything
+pm.dexopt.downgrade_after_inactive_days=30
+pm.dexopt.first-boot=verify
+pm.dexopt.first-use=verify
+pm.dexopt.inactive=verify
+pm.dexopt.install=everything
+pm.dexopt.install-bulk=everything
+pm.dexopt.install-bulk-downgraded=everything
+pm.dexopt.install-bulk-secondary=everything
+pm.dexopt.install-bulk-secondary-downgraded=everything
+pm.dexopt.install-fast=verify
+pm.dexopt.post-boot=verify
+pm.dexopt.shared=everything
+
+# Misc ART optimizations
+dalvik.vm.backgroundgctype=HSpaceCompact
+dalvik.vm.dex2oat-minidebuginfo=false
+dalvik.vm.foreground-heap-growth-multiplier=2.5
+dalvik.vm.gctype=CMC
+dalvik.vm.heapgrowthlimit=512m
+dalvik.vm.heapmaxfree=32m
+dalvik.vm.heapminfree=512k
+dalvik.vm.heapsize=512m
+dalvik.vm.heapstartsize=2m
+dalvik.vm.heaptargetutilization=0.8
+dalvik.vm.minidebuginfo=false
+dalvik.vm.usap_pool_enabled=true
+dalvik.vm.usap_pool_refill_delay_ms=3000
+dalvik.vm.usap_pool_size_max=3
+dalvik.vm.usap_pool_size_min=1
+dalvik.vm.usap_refill_threshold=1
+persist.device_config.aconfig_flags.runtime_native_boot.disable_lock_profiling=true
+persist.device_config.runtime_native_boot.enable_generational_cc=true
+persist.device_config.runtime_native_boot.disable_lock_profiling=true
+persist.device_config.runtime_native_boot.force_disable_uffd_gc=false
+persist.device_config.runtime_native.usap_pool_enabled=true
+ro.dalvik.vm.enable_uffd_gc=true
+
+# LMKD
+persist.device_config.aconfig_flags.lmkd_native.use_minfree_levels=false
+persist.device_config.lmkd_native.use_minfree_levels=false
+ro.lmk.psi_complete_stall_ms=900
+ro.lmk.psi_partial_stall_ms=300
+ro.lmk.swap_compression_ratio=5
+ro.lmk.swap_free_low_percentage=0
+ro.lmk.swap_util_max=100
+ro.lmk.use_new_strategy=1
+ro.lmk.use_psi=1
+
+# AppCompact
+persist.sys.use_boot_compact=false
+
+# Surfaceflinger performance/power optimizations
+debug.sf.auto_latch_unsignaled=0
+debug.sf.latch_unsignaled=1
+ro.surface_flinger.use_content_detection_for_refresh_rate=false
+
+# Renderengine optimizations
+debug.renderengine.backend=skiavkthreaded
+debug.renderengine.vulkan=true
+debug.stagefright.renderengine.backend=threaded
+persist.sys.force_sw_gles=0
+
+# HWUI optimizations
+ro.hwui.use_vulkan=1
+
+# FramePacing
+vendor.perf.framepacing.enable=0
+
+# Default enable MGLRU
+persist.device_config.mglru_native.lru_gen_config=all
+
+# Debug
+debug.oplus.labmode_sys_ostats_trigger_trace=0
+debug.oplus.labmode_data_ostats_continuous_trace=0
+debug.ostats.bds.enable=0
+debug.trace_size_limit_enable=true
+sys.olc.service.on=false
+sys.oplus.voldraise2olc=false
+EOF
+    
+    # Set executable permissions
+    chmod +x "$MODULE_DIR/post-fs-data.sh"
+    
+    echo "Magisk module created successfully in $MODULE_DIR"
+          
+          # Set executable permissions for post-fs-data.sh
+          chmod +x "$MODULE_DIR/post-fs-data.sh"
+          
+          echo "Magisk module files created in $MODULE_DIR"
       - name: Create ZIP Files for Different Formats
         run: |
           echo "Navigating to AnyKernel3 directory..."
